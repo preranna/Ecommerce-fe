@@ -21,8 +21,8 @@ export default function Home() {
 
   return (
     <div>
-      <h1 className="font-bold text-center">Products</h1>
-      <ul>
+      <h1 className="font-bold text-center p-4">Products</h1>
+      <ul className="m-4">
         {ProductsList.map((product) => (
           <li key={product.id}>
            {product.name} - Stock: {product.stock}
