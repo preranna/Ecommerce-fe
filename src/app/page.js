@@ -7,7 +7,7 @@ export default function Home() {
 
   const fetchProduct = async () => {
     try {
-      const response = await axios.get("http://localhost:15000/products");
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_SERVER_BASE_URL}/products`);
       setProductList(response.data);
     } catch (err) {
       console.error(err);
@@ -24,8 +24,9 @@ export default function Home() {
       <h1 className="font-bold text-center p-4">Products</h1>
       <ul className="m-4">
         {ProductsList.map((product) => (
-          <li key={product.id}>
+          <li key={product._id}>
            {product.name} - Stock: {product.stock}
+           <img src={`${process.env.NEXT_PUBLIC_SERVER_BASE_URL}/${product.imageURL}`}/>
           </li>
         ))}
       </ul>
