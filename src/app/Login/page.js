@@ -25,7 +25,7 @@ const LoginForm = () => {
     const response = await axios.post(`${process.env.NEXT_PUBLIC_SERVER_BASE_URL}/auth/login`, {
       email, password
     });
-    localStorage.setItem('loginToken', response.data.token);
+    localStorage.setItem('loginToken', JSON.stringify({token:response.data.token}));
   };
 
   return (
