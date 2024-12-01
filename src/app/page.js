@@ -1,17 +1,25 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useLocalStorage } from "@uidotdev/usehooks";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { setProducts } from "@/lib/feature/product-slice";
 
 export default function Home() {
-  const [ProductsList, setProductList] = useState([]);
+
+  // const count  =  useAppSelector((state) => state)
+  // console.log(count);
+  // const [ProductsList, setProductList] = useState([]);
+  const {value : ProductsList, error, isLoading } = useAppSelector ((state) => state.Products )
+  const dispatch = useAppDispatch();
+
   const [loginToken] = useLocalStorage('loginToken', null);
 
   const fetchProduct = async () => {
     try {
       const response = await axios.get(`${ process.env.NEXT_PUBLIC_SERVER_BASE_URL }/products`);
-      setProductList(response.data);
+      // setProductList(response.data);
+      dispatch(setProducts(response.data));
     } catch (err) {
       console.error(err);
       alert("Some error occurred while fetching data");
@@ -25,7 +33,7 @@ export default function Home() {
   const handleAddToCart = async (product) => {
     console.log('adding to cart', product);
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_SERVER_BASE_URL}/order/add-to-cart`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_SERVER_BASE_URL}/orders/add-to-cart`, {
         productId: product._id,
       }, {
         headers: {

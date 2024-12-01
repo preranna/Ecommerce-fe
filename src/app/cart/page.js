@@ -1,100 +1,129 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react';
+import { useLocalStorage } from '@uidotdev/usehooks';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import CartDetails from './cart-details';
+import ShippingDetailsForm from './shippingForm.js';
+import PaymentForm from './PaymentForm';
+import { orderStatus } from './constants';
 
 export default function Cart() {
-    const items = [
-        {
-            productname: 'jacket',
-            description: 'hgweqykrukfyyfjgygiqwevhgjehjfyk,kfbkfk',
-            price: 3000,
-            image: 'https://th.bing.com/th/id/OIP.Ub5eVTSQryIaXgm0LaRtgAHaJZ?rs=1&pid=ImgDetMain',
-        },
-        {
-            productname: 'bag',
-            description: 'hgweqykrukfyyfjgygiqwevhgjehjfyk,kfbkfk',
-            price: 3000,
-            image: 'https://th.bing.com/th/id/OIP.Ub5eVTSQryIaXgm0LaRtgAHaJZ?rs=1&pid=ImgDetMain',
-        },
-        {
-            productname: 'pant',
-            description: 'hgweqykrukfyyfjgygiqwevhgjehjfyk,kfbkfk',
-            price: 3000,
-            image: 'https://th.bing.com/th/id/OIP.Ub5eVTSQryIaXgm0LaRtgAHaJZ?rs=1&pid=ImgDetMain',
-        },
-    ];
+    const [loginToken] = useLocalStorage('loginToken', null);
+    const [orderInfo, setOrderInfo] = useState(null);
+    const [activeTabIndex, setActiveTabIndex] = useState(0);
+    const router = useRouter()
+
+    useEffect(() => {
+        const createDraftOrder = async () => {
+            if (!loginToken) return;
+            const response = await axios.post(`${ process.env.NEXT_PUBLIC_SERVER_BASE_URL }/orders/order-from-cart`, {}, {
+                headers: {
+                    Authorization: `Bearer ${ loginToken.token }`
+                }
+            });
+            setOrderInfo(response.data);
+        };
+
+        createDraftOrder();
+    }, []);
 
     const categories = ['Shopping Cart', 'Shipping Details', 'Payment Options'];
+
+    const handleSubmitCartDetails = async () => {
+        const { data: updatedOrderInfo } = await axios.patch(`${ process.env.NEXT_PUBLIC_SERVER_BASE_URL }/orders/${ orderInfo._id }`,
+            { status: orderStatus.SHIPPING_DETAILS },
+            {
+                headers: {
+                    Authorization: `Bearer ${ loginToken.token }`
+                }
+            }
+        );
+        setOrderInfo(updatedOrderInfo);
+        setActiveTabIndex(1);      
+    } 
+
+    const handleAddShippingInfo = async (shippingInfo) => {
+        const {data: updatedOrderInfo} = await axios.patch(`${ process.env.NEXT_PUBLIC_SERVER_BASE_URL }/orders/${ orderInfo._id }`,
+            { status: orderStatus.PAYMENT_PENDING, shippingInfo },
+            {
+                headers: {
+                    Authorization: `Bearer ${ loginToken.token }`
+                }
+            }
+        );
+        setOrderInfo(updatedOrderInfo);
+        setActiveTabIndex(2);
+    };
+
+    const handlePayWithKhalti = async () => {
+        const { data: { khaltiPaymentData } } = await axios.post(
+            `${ process.env.NEXT_PUBLIC_SERVER_BASE_URL }/orders/${ orderInfo._id }/pay-with-khalti`, 
+            {
+                returnUrl: 'http://localhost:3000/payment-success'
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${ loginToken.token }`
+                }
+            }
+        );
+        router.push(khaltiPaymentData.payment_url);
+    }
+
+    const handleCancel = () => {
+        setActiveTabIndex(0);
+    };
 
     return (
         <div className="flex flex-col h-screen w-full items-center pt-7 px-4 bg-gray-50">
             <div className="w-full max-w-5xl flex flex-col">
-                <TabGroup>
+                <TabGroup selectedIndex={activeTabIndex} onChange={setActiveTabIndex}>
                     <TabList className="flex justify-center gap-4 w-full px-2">
                         {categories.map((name) => (
                             <Tab
                                 key={name}
                                 className={({ selected }) =>
-                                    `py-2 text-sm font-semibold ${selected ? "text-black border-b-2 border-black" : "text-gray-500"
+                                    `py-2 text-sm font-semibold ${ selected ? "text-black border-b-2 border-black" : "text-gray-500"
                                     }`
                                 }
                             >
+
                                 {name}
                             </Tab>
                         ))}
                     </TabList>
-                    <TabPanels className="mt-6 w-full flex justify-start">
-                        <TabPanel className="w-full max-w-5xl px-4">
-                            <div className="flex flex-col md:flex-row gap-6 bg-white p-6 rounded-lg shadow">
-                                <div className="md:w-2/3">
-                                    <h1 className="text-2xl font-semibold mb-4">Shopping Cart</h1>
-                                    <div className="flex flex-col gap-6">
-                                        {items.map((item, index) => (
-                                            <div key={index} className="flex flex-row gap-4 items-center">
-                                                <div className="w-24 h-24 border">
-                                                    <img src={item.image} alt={item.productname} className="w-full h-full object-cover" />
-                                                </div>
-                                                <div className="flex flex-col gap-2">
-                                                    <p><strong>{item.productname}</strong></p>
-                                                    <p>{item.description}</p>
-                                                    <p>Rs. {item.price}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                    {
+                        !orderInfo
+                            ? <>loading...</>
+                            : <TabPanels className="mt-6 w-full flex justify-start">
+                                <TabPanel className="w-full max-w-5xl px-4">
+                                    <CartDetails 
+                                    orderInfo={orderInfo} 
+                                    onSubmit={handleSubmitCartDetails}
+                                    onCancel={handleCancel}
+                                    />
+                                </TabPanel>
 
-                                <div className="md:w-1/3">
-                                    <h1 className="text-2xl font-semibold mb-4">Summary</h1>
-                                    <div className="text-sm">
-                                        <div className="flex justify-between mb-2">
-                                            <span>Subtotal</span>
-                                            <span>Rs. 9000</span>
-                                        </div>
-                                        <div className="flex justify-between mb-2">
-                                            <span>Shipping</span>
-                                            <span>RS. 130</span>
-                                        </div>
-                                        <div className="flex justify-between font-semibold text-lg mt-4">
-                                            <span>Total</span>
-                                            <span>Rs. 9130</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex gap-4 mt-4">
-                                <button className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800">Next</button>
-                                <button className="px-6 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Cancel</button>
-                            </div>
-                        </TabPanel>
+                                <TabPanel className="w-full max-w-5xl bg-white p-4 rounded-lg shadow">
+                                    <ShippingDetailsForm
+                                        orderInfo={orderInfo}
+                                        onSubmit={handleAddShippingInfo}
+                                        onCancel={handleCancel}
+                                    />
+                                </TabPanel>
 
-                        <TabPanel className="w-full max-w-5xl bg-white p-4 rounded-lg shadow">
-                            <h2 className="text-2xl font-semibold mb-4">Shipping Details</h2>
-                        </TabPanel>
-
-                        <TabPanel className="w-full max-w-5xl bg-white p-4 rounded-lg shadow">
-                            <h2 className="text-2xl font-semibold mb-4">Payment Options</h2>
-                        </TabPanel>
-                    </TabPanels>
+                                <TabPanel className="w-full max-w-5xl bg-white p-4 rounded-lg shadow">
+                                    <h2 className="text-2xl font-semibold mb-4">Payment Options</h2>
+                                    <PaymentForm
+                                        onPayWithKhalti={handlePayWithKhalti}
+                                        onCancel={handleCancel}
+                                    />
+                                </TabPanel>
+                            </TabPanels>
+                    }
                 </TabGroup>
             </div>
         </div>
